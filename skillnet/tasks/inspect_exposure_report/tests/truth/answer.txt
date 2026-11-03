@@ -1,0 +1,5 @@
+harbour.jpg: overexposed
+forest.jpg: underexposed
+market.jpg: fine
+camera: X-T4
+forest ISO: 3200

@@ -1,0 +1,11 @@
+## v1
+- Check any photo before editing: size, camera, lens and exposure settings, plus measured brightness, blown highlights, crushed shadows and colour cast, with suggested starting adjustments and a preview.
+- Grade photos with 41 built-in looks (golden hour, film, teal and orange, black and white and more) at any strength, auto tone, or precise sliders for light, colour, white balance, effects, tone curve and colour grading.
+- Asking for a warmer or cooler photo gives a change you can actually see and that is measured, even when a dark, cold photo is brightened at the same time; photo checks now point out a cold or warm overall tone.
+- Every edit comes with a before/after picture and before/after brightness and clipping numbers, so you can see what changed.
+- Edit just part of a photo: darken a sky with a graduated filter, brighten a face with a radial spot, or pick by brightness, colour, sky, subject or background, with an overlay showing exactly where the change applied.
+- Crop to common shapes (1:1, 4:5, 16:9 and more), straighten horizons automatically or by a set angle, fix converging lines, heal dust spots and blemishes, remove red eye, sharpen, reduce noise and correct lens distortion.
+- Apply one look to a whole shoot and export JPEG, PNG, TIFF (8 or 16-bit), WebP, AVIF or JPEG XL at the size you choose, in one zip, with an optional contact-sheet PDF; big batches are processed in parallel.
+- Keep the untouched originals with an edit sidecar that Lightroom can read (global edits only).
+- Edits are saved as a reusable look you can pass from one step to the next or apply to other photos; your original files are never changed.
+- Camera raw files (DNG, CR2, CR3, ARW, NEF, RAF, RW2 and others) are supported.

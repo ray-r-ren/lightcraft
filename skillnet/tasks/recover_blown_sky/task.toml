@@ -1,0 +1,46 @@
+schema_version = "1.4"
+source = "skillnet"
+artifacts = ["/task/outputs", "/task/answer.txt"]
+
+[task]
+name = "skillnet/pro-photo-darkroom-recover_blown_sky"
+description = "Pro Photo Darkroom — Grade photos: The sky in my lake photo is completely blown out — it's just white. Can you bring the highlights back as much as possible so the sky isn't clipped, without maki"
+keywords = ["skillnet", "pro-photo-darkroom", "grade-photos"]
+
+[[task.authors]]
+name = "SkillNet Agent"
+
+[metadata]
+[metadata.skillnet]
+skill = "pro-photo-darkroom"
+version = 1
+task = "recover_blown_sky"
+ability = "Grade photos"
+core = true
+source = "builder"
+judge = "programmatic"
+prompt = "The sky in my lake photo is completely blown out — it's just white. Can you bring the highlights back as much as possible so the sky isn't clipped, without making the whole picture dark? Give me the improved photo as a JPEG."
+
+[agent]
+timeout_sec = 900
+user = "agent"
+
+[verifier]
+timeout_sec = 600
+environment_mode = "separate"
+
+[environment]
+build_timeout_sec = 1800
+cpus = 4
+memory_mb = 6144
+workdir = "/task"
+network_mode = "allowlist"
+allowed_hosts = ["skillnet.sh"]
+
+[[environment.mcp_servers]]
+name = "skillnet"
+transport = "streamable-http"
+url = "https://skillnet.sh/mcp"
+
+[environment.mcp_servers.headers]
+Authorization = "Bearer ${SKILLNET_API_KEY}"

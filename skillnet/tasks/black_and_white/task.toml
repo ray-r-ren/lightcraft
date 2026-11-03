@@ -1,0 +1,46 @@
+schema_version = "1.4"
+source = "skillnet"
+artifacts = ["/task/outputs", "/task/answer.txt"]
+
+[task]
+name = "skillnet/pro-photo-darkroom-black_and_white"
+description = "Pro Photo Darkroom — Grade photos: Turn this colourful street photo into a punchy, high-contrast black and white and send me the JPEG."
+keywords = ["skillnet", "pro-photo-darkroom", "grade-photos"]
+
+[[task.authors]]
+name = "SkillNet Agent"
+
+[metadata]
+[metadata.skillnet]
+skill = "pro-photo-darkroom"
+version = 1
+task = "black_and_white"
+ability = "Grade photos"
+core = true
+source = "builder"
+judge = "programmatic"
+prompt = "Turn this colourful street photo into a punchy, high-contrast black and white and send me the JPEG."
+
+[agent]
+timeout_sec = 900
+user = "agent"
+
+[verifier]
+timeout_sec = 600
+environment_mode = "separate"
+
+[environment]
+build_timeout_sec = 1800
+cpus = 4
+memory_mb = 6144
+workdir = "/task"
+network_mode = "allowlist"
+allowed_hosts = ["skillnet.sh"]
+
+[[environment.mcp_servers]]
+name = "skillnet"
+transport = "streamable-http"
+url = "https://skillnet.sh/mcp"
+
+[environment.mcp_servers.headers]
+Authorization = "Bearer ${SKILLNET_API_KEY}"
