@@ -47,6 +47,15 @@ def make_dark_cold(path: Path) -> Path:
     return path
 
 
+def make_blue_harbour(path: Path) -> Path:
+    """Evening harbour, far too dark and strongly blue (frame warmth about -0.25)."""
+    _im("-size", "1600x1067", "gradient:rgb(40,70,140)-rgb(5,15,45)", "-fill", "rgb(30,40,70)",
+        "-draw", "rectangle 0,600 1600,1067", "-fill", "rgb(200,150,80)", "-draw", "circle 400,500 412,500",
+        "-draw", "circle 900,520 910,520", "-fill", "rgb(60,70,90)", "-draw", "rectangle 1100,380 1400,600",
+        "-quality", "92", str(path))
+    return path
+
+
 def make_tilted(path: Path, angle: float = 5) -> Path:
     """Sky over ground with a level horizon, rotated `angle` degrees clockwise, centre-cropped to 1200x800."""
     _im("-size", "1800x600", f"xc:{SKY}", "(", "-size", "1800x600", f"xc:{GROUND}", ")", "-append",
@@ -82,6 +91,8 @@ def fx(tmp_path_factory) -> Path:
     make_dark(d / "dark.jpg")
     make_dark_cold(d / "cold_room.jpg")
     make_tilted(d / "tilted.jpg")
+    make_blue_harbour(d / "harbour.jpg")
+    _im("-size", "400x300", "gradient:orange-navy", str(d / "IMG_4821.HEIC"))
     make_dusty(d / "dusty.jpg")
     shutil.copyfile(d / "blown.jpg", d / "exif.jpg")
     add_exif(d / "exif.jpg")

@@ -1,3 +1,11 @@
+## v2
+- Photo grading is fully available again and re-checked end to end: brightening, highlight recovery, warmer or cooler colour, black and white with film grain, and preset looks all give measured, visible changes.
+- The skill's list of limits no longer wrongly says grading is unavailable, and now notes that HEIC photos need to be exported as JPEG first.
+- A graded photo now states its real pixel size; small photos are never enlarged.
+- Asking for a warmer photo now works even on very blue night or evening shots: the stronger the request, the warmer the result, and a strong blue cast can be fully neutralised.
+- When a brightened photo is still too dark, the result says so and suggests how much more to brighten.
+- iPhone HEIC photos now get a clear "not supported, please send a JPEG" answer instead of a vague file-type error.
+
 ## v1
 - Check any photo before editing: size, camera, lens and exposure settings, plus measured brightness, blown highlights, crushed shadows and colour cast, with suggested starting adjustments and a preview.
 - Grade photos with 41 built-in looks (golden hour, film, teal and orange, black and white and more) at any strength, auto tone, or precise sliders for light, colour, white balance, effects, tone curve and colour grading.

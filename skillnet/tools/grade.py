@@ -11,7 +11,7 @@ from skillnet_sdk import (FileConstraints, InputFile, OutputFile, ToolContext, T
 
 from . import _common as C
 
-PhotoFile = Annotated[InputFile, FileConstraints(extensions=C.PHOTO_EXTS)]
+PhotoFile = Annotated[InputFile, FileConstraints(extensions=C.ACCEPT_EXTS)]
 LookFile = Annotated[InputFile, FileConstraints(extensions=[".json"])]
 
 
@@ -39,9 +39,11 @@ class GradeIn(ToolInput):
         default=None, ge=-100, le=100,
         description="Make the colour warmer (+) or cooler (-), -100..100: 'warmer', 'cozier', 'less cold', "
                     "'golden' → +30..+60; 'cooler', 'less yellow/orange' → -30..-60. Use this instead of setting "
-                    "wb.temp by hand: it works the same on JPEGs and raws, and the tool measures the result and "
-                    "strengthens the shift (up to 2 more renders) if the photo did not visibly change warmth, e.g. "
-                    "because brightening also strengthened an existing cool tint.")
+                    "wb.temp by hand: it works the same on JPEGs and raws. The tool measures the result and keeps "
+                    "strengthening (white balance, then a warm or cool colour-grading tint) until the measured "
+                    "shift is visible. On a strongly tinted photo the shift scales with the tint: warmth +80..+100 "
+                    "neutralises a strong blue cast, +40..+60 removes roughly half of it. A larger value never "
+                    "gives a smaller shift.")
     look_file: LookFile | None = Field(default=None, description="look.json from an earlier grade_photo / "
                                                                  "adjust_area / retouch_photo call, to build on "
                                                                  "those edits.")
@@ -70,6 +72,15 @@ class GradeOut(ToolOutput):
     rejected_controls: list[str]
     white_balance_temp: float | None = Field(default=None, description="wb.temp the graded image uses (6500 = as "
                                                                        "shot on JPEGs, Kelvin on raws).")
+
+
+def _warmth_target(warmth: float, before_warmth: float) -> float:
+    """Measured red-minus-blue shift a warmth value should reach. A fixed floor (0.0008 per point) for neutral
+    photos; on a photo tinted against the asked direction, a share of that tint (all of it at |warmth| >= 80)."""
+    floor = max(0.01, 0.0008 * abs(warmth))
+    against = -before_warmth if warmth > 0 else before_warmth   # > 0 when the photo leans the other way
+    share = min(1.0, abs(warmth) / 80.0)
+    return max(floor, against * share if against > 0.02 else 0.0)
 
 
 def _stats(p) -> Stats:
@@ -137,10 +148,12 @@ brightness/clipping/warmth stats before→after and look.json to pass to the nex
     if vals:
         history.append("sliders " + ", ".join(f"{k}={v:g}" for k, v in vals.items()))
 
-    def render(temp: float | None):
+    def render(temp: float | None, extra: dict | None = None):
         v = dict(vals)
         if temp is not None:
             v["wb.temp"] = temp
+        if extra:
+            v.update(extra)
         chain = list(pre_cmds)
         if v:
             chain.append({"command": "develop.set", "params": {"values": v}})
@@ -153,24 +166,62 @@ brightness/clipping/warmth stats before→after and look.json to pass to the nex
         res = render(None)
         b, a = _stats(before), _stats(graded)
     else:
-        target = max(0.01, 0.0008 * abs(args.warmth))
         sign = 1.0 if args.warmth >= 0 else -1.0
-        strength = float(args.warmth)
-        for attempt in range(1 if args.black_and_white else 3):
-            temp = C.kelvin_shift(base_temp, strength)
+        # 1) white balance: the asked shift, then up to 2.5x stronger if the measured change falls short
+        temp = C.kelvin_shift(base_temp, float(args.warmth))
+        res = render(temp)
+        b, a = _stats(before), _stats(graded)
+        target = _warmth_target(args.warmth, b.warmth)
+        got = sign * (a.warmth - b.warmth)
+        if got < 0.85 * target and temp not in (2000.0, 50000.0):
+            ctx.progress(35, "colour did not shift enough; strengthening the white balance")
+            temp = C.kelvin_shift(base_temp, sign * min(250.0, 2.5 * abs(args.warmth)))
             res = render(temp)
-            b, a = _stats(before), _stats(graded)
+            a = _stats(graded)
             got = sign * (a.warmth - b.warmth)
-            if got >= 0.7 * target or temp in (2000.0, 50000.0) or abs(strength) >= 300:
-                break
-            ctx.progress(40 + 15 * attempt, "colour did not shift enough; strengthening the warmth")
-            strength = sign * min(300.0, abs(strength) * min(3.0, max(1.5, target / max(got, 0.003))))
-        if sign * (a.warmth - b.warmth) < 0.5 * target:
+        # 2) a warm (orange) or cool (blue) global colour-grading tint, solved for the remaining shift
+        tint_sat = 0.0
+        can_tint = not args.black_and_white and not any(k.startswith("grading.global") for k in vals)
+        if got < 0.85 * target and can_tint:
+            hue = 40.0 if sign > 0 else 215.0
+            lo, hi, trial = 0.0, 100.0, 50.0
+            best: tuple[float, float] | None = None       # (sat, shift) of the weakest tint that reached the target
+            last = (0.0, got)
+            for attempt in range(4):
+                ctx.progress(45 + 10 * attempt, "adding a colour-grading tint to reach the asked warmth")
+                res = render(temp, {"grading.global.hue": hue, "grading.global.sat": trial})
+                a = _stats(graded)
+                g2 = sign * (a.warmth - b.warmth)
+                last = (trial, g2)
+                if g2 >= 0.85 * target:
+                    best = (trial, g2) if best is None or trial < best[0] else best
+                    if g2 <= 1.4 * target:
+                        break
+                    hi = trial
+                else:
+                    if trial >= 100.0:
+                        break
+                    lo = trial
+                trial = round((lo + hi) / 2, 1) if best is not None else min(100.0, round(max(trial * 2, lo + 25), 1))
+            pick = best or last
+            if pick[0] != last[0]:
+                res = render(temp, {"grading.global.hue": hue, "grading.global.sat": pick[0]})
+                a = _stats(graded)
+            tint_sat, got = pick[0], sign * (a.warmth - b.warmth)
+        if got < 0.5 * target:
             warm_notes.append(f"Asked for warmth {args.warmth:+g} but measured warmth only moved {b.warmth}→{a.warmth} "
                               f"(white balance {temp:g}); the colour change may not be visible.")
-        elif abs(strength) > abs(args.warmth) + 1e-6:
+        elif tint_sat > 0:
+            warm_notes.append(f"White balance alone could not reach the asked shift, so a "
+                              f"{'warm orange' if sign > 0 else 'cool blue'} colour-grading tint "
+                              f"(saturation {tint_sat:.0f}) was added: warmth {b.warmth}→{a.warmth}, "
+                              f"white balance {temp:g}.")
+        elif temp != C.kelvin_shift(base_temp, float(args.warmth)):
             warm_notes.append(f"The white-balance shift was strengthened to reach a visible change: warmth "
                               f"{b.warmth}→{a.warmth} with white balance {temp:g}.")
+        if sign > 0 and a.warmth < -0.03 and b.warmth < -0.03 and abs(args.warmth) < 80:
+            warm_notes.append(f"The photo is warmer ({b.warmth}→{a.warmth}) but still reads cool; warmth +80..+100 "
+                              "neutralises more of the blue.")
     settings = res.get("develop.get") or {}
     ctx.progress(75, "measuring before/after")
     ba = ctx.output_path("before_after.jpg")
@@ -183,6 +234,11 @@ brightness/clipping/warmth stats before→after and look.json to pass to the nex
     if args.warmth is None and "wb.temp" in vals and abs(a.warmth - b.warmth) < 0.01:
         uncertain.append(f"wb.temp={vals['wb.temp']:g} barely changed the measured warmth ({b.warmth}→{a.warmth}); "
                          "for a visibly warmer or cooler result use the warmth argument instead.")
+    brightened = vals.get("light.exposure", 0) > 0 or args.auto_tone
+    still_dark = brightened and b.mean_luminance < 0.25 and a.mean_luminance < 0.3
+    if still_dark:
+        uncertain.append(f"Brighter ({b.mean_luminance}→{a.mean_luminance}) but still dark: a normally exposed "
+                         "photo measures about 0.30-0.45.")
     if rejected:
         uncertain.append(f"Ignored unknown slider id(s): {', '.join(rejected[:10])} (see list_looks controls).")
     if a.clipped_highlights_pct > b.clipped_highlights_pct + 1.0:
@@ -198,13 +254,16 @@ brightness/clipping/warmth stats before→after and look.json to pass to the nex
     what = ", ".join(history[len((look or {}).get("history") or []):]) or "no changes"
     summary = (f"Graded ({what[:120]}): brightness {b.mean_luminance}→{a.mean_luminance}, highlights clipped "
                f"{b.clipped_highlights_pct}%→{a.clipped_highlights_pct}%, warmth {b.warmth}→{a.warmth}")
+    gw, gh = C.image_size(graded)
     return ToolResult(
         data=data, summary=summary, uncertain=uncertain,
         status="partial" if rejected else "ok",
-        outputs=[OutputFile(graded, f"Graded photo, {args.preview_size}px long edge"),
+        outputs=[OutputFile(graded, f"Graded photo, {gw}x{gh} px"),
                  OutputFile(ba, "Before (left) and after (right)"),
                  OutputFile(look_path, "Reusable look: pass as look_file to the next edit or to export_photos")],
-        next_step="Show before_after.jpg. Pass look.json as look_file to adjust_area / retouch_photo / export_photos "
+        next_step=("If the user asked for it brighter, call grade_photo again with light.exposure about 0.5 stop "
+                   "higher (and light.shadows +40) until after.mean_luminance reaches about 0.30. " if still_dark else "")
+        + "Show before_after.jpg. Pass look.json as look_file to adjust_area / retouch_photo / export_photos "
                   "to keep these edits.")
 
 

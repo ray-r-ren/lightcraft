@@ -13,7 +13,7 @@ name = "SkillNet Agent"
 [metadata]
 [metadata.skillnet]
 skill = "pro-photo-darkroom"
-version = 1
+version = 2
 task = "straighten_crop_instagram"
 ability = "Retouch photos"
 core = true

@@ -27,6 +27,9 @@ RAW_EXTS = {
 }
 RASTER_EXTS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".webp", ".jxl", ".avif", ".psd"}
 PHOTO_EXTS = sorted(RAW_EXTS | RASTER_EXTS)
+# Accepted by the argument check only so the tools can answer with a clear "not supported" error.
+REFUSED_EXTS = {".heic", ".heif", ".hif"}
+ACCEPT_EXTS = sorted(RAW_EXTS | RASTER_EXTS | REFUSED_EXTS)
 LOOK_KIND = "pro-photo-darkroom-look"
 
 # Aspect words users say → [w, h] used as given (taller than wide = portrait).
@@ -46,6 +49,15 @@ def work_dir(prefix: str = "pdr-") -> Path:
 def stage_photo(src: Path, wd: Path, index: int = 0) -> Path:
     """Copy the user's photo into the work folder (the engine only ever sees the copy)."""
     ext = src.suffix.lower()
+    if ext in REFUSED_EXTS:
+        raise ToolError(
+            "unsupported_format",
+            f"{src.name} is a HEIC/HEIF photo; this skill does not support HEIC, so this photo was not edited and no edited "
+            "copy of it was made.",
+            "Tell the user plainly that HEIC photos are not supported, so no edited file was produced, and ask "
+            "them for a JPEG copy (iPhone: share or export the photo as JPEG, or set Settings → Camera → Formats "
+            "→ Most Compatible for new shots). Once they upload the JPEG, start again with inspect_photo.",
+        )
     if ext not in RAW_EXTS and ext not in RASTER_EXTS:
         raise ToolError(
             "unsupported_format",

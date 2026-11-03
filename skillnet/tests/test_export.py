@@ -116,3 +116,14 @@ def test_large_batch_fans_out(tmp_path):
     names = _unzip(env, tmp_path / "x")
     assert names == [f"p{i:02d}.jpg" for i in range(18)]
     assert len(pypdf.PdfReader(out(env, "contact_sheet.pdf")).pages) == 1
+
+
+def test_heic_in_batch_fails_only_that_photo(fx, tmp_path):
+    env = call_tool(export_photos, {"photos": [str(fx / "blown.jpg"), str(fx / "IMG_4821.HEIC")], "long_edge": 400},
+                    output_root=tmp_path / "a")
+    assert env.status == "partial" and env.data["exported"] == 1
+    assert "HEIC" in env.data["failed"][0]["reason"]
+    env = call_tool(export_photos, {"photos": [str(fx / "IMG_4821.HEIC")]}, output_root=tmp_path / "b")
+    assert env.status == "error"
+    print(env.error.code, env.error.message, env.next_step)
+    assert "HEIC" in env.error.message + env.next_step

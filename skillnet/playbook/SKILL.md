@@ -37,10 +37,16 @@ Call `inspect_photo` on each photo first; read `clipped_highlights_pct`, `clippe
    `data.after`:
    - `clipped_highlights_pct` should not rise (the tool warns in `uncertain` if it rose > 1 point). To recover
      a blown sky use `light.highlights` -50…-80 and `light.whites` -10…-30.
-   - Dark photo (`mean_luminance` < 0.25): `light.exposure` +0.5…+1.5 (stops) and `light.shadows` +30…+60,
-     or `auto_tone=true` first.
-   - "Warmer", "cozier", "less cold" → `warmth` +40 (+60 for "much warmer"); "cooler", "less yellow" →
-     `warmth` −40. Don't set `wb.temp` by hand for this: 6800 on a JPEG is barely visible, and brightening a
+   - Dark photo (`mean_luminance` < 0.25): `light.exposure` +0.5…+1.5 (stops) and `light.shadows` +30…+60;
+     "far too dark" → +1.5…+2 with `light.shadows` +40. Aim for `after.mean_luminance` about 0.30–0.45
+     (measured: a 0.19 night harbour reaches 0.27 at +1, 0.33 at +1.5/shadows +40, 0.39 at +2). If the
+     result says "still dark", grade again with ~0.5 stop more. `auto_tone` alone lifts dark photos only a
+     little (0.19 → 0.20–0.22 measured).
+   - "Warmer", "cozier", "less cold" → `warmth` +40 (+60 for "noticeably/much warmer"; +80…+100 to fully
+     neutralise a strong blue cast, i.e. `before.warmth` below −0.1); "cooler", "less yellow" → `warmth` −40.
+     On a tinted photo the shift scales with the tint (+40…+60 removes roughly half of it) and a higher value
+     never gives less warmth; when white balance runs out (common on JPEGs) the tool adds an orange or blue
+     colour-grading tint and says so in `uncertain`. Don't set `wb.temp` by hand for this: 6800 on a JPEG is barely visible, and brightening a
      cold photo makes its blue tint stronger, so the result can come out *cooler*. `warmth` measures the
      result and strengthens the shift until `after.warmth` really rises. Confirm `after.warmth` is
      clearly above `before.warmth` (about +0.02 or more) before saying it is warmer. `wb.tint` + = magenta,
@@ -105,7 +111,12 @@ each call returns an updated one. A call without `look_file` starts again from t
   Export never enlarges: a 1000 px photo asked for at 3000 stays 1000.
 - **Raws that only give a preview**: compressed Olympus ORF / Samsung SRW, Nikon HE NEF and some CR3
   variants decode only the embedded JPEG; `inspect_photo` sets `preview_only`.
-- **HEIC is not read.** Ask the user for a JPEG export of iPhone HEIC photos.
+- **HEIC is not supported.** Tools answer `unsupported_format` for .heic/.heif. Tell the user plainly
+  that HEIC photos are not supported and no edited file was made, and ask for a JPEG copy (iPhone: share
+  or export as JPEG). Then start again with the JPEG.
+- **Removing a strong cast lowers saturation.** Neutralising a very blue photo drops `mean_saturation`
+  (measured 0.65 → 0.23 at warmth +45); that is the blue leaving, not a fault. Add `color.vibrance` +15…+25
+  if the result looks flat (measured 0.23 → 0.26 at +20).
 - **XMP sidecars carry global edits only.** Lightroom reads light, white balance, colour, B&W, HSL mix,
   curve, colour grading, detail, vignette, grain and crop from them and renders with its own engine (close,
   not identical). Masks, spots, red-eye, upright and colour profiles stay in this skill's own field;

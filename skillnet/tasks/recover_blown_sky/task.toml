@@ -13,7 +13,7 @@ name = "SkillNet Agent"
 [metadata]
 [metadata.skillnet]
 skill = "pro-photo-darkroom"
-version = 1
+version = 2
 task = "recover_blown_sky"
 ability = "Grade photos"
 core = true

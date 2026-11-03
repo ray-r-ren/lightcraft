@@ -92,3 +92,11 @@ def test_inspect_flags_cold_photo(fx, tmp_path):
     assert env.data["warmth"] < -0.01
     sug = {x["control"]: x["value"] for x in env.data["suggestions"]}
     assert sug.get("warmth", 0) > 0 and sug.get("light.exposure", 0) > 0
+
+
+def test_inspect_heic_refused_with_clear_next_step(fx, tmp_path):
+    env = call_tool(inspect_photo, {"photo": str(fx / "IMG_4821.HEIC")}, output_root=tmp_path)
+    assert env.status == "error" and env.error.code == "unsupported_format"
+    assert "does not support HEIC" in env.error.message
+    assert "not supported" in env.next_step and "JPEG" in env.next_step
+    assert not env.outputs

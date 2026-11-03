@@ -14,7 +14,7 @@ from . import _common as C
 
 
 class InspectIn(ToolInput):
-    photo: Annotated[InputFile, FileConstraints(extensions=C.PHOTO_EXTS)] = Field(
+    photo: Annotated[InputFile, FileConstraints(extensions=C.ACCEPT_EXTS)] = Field(
         description="The photo to look at: JPEG, PNG, TIFF, WebP, JPEG XL, AVIF, DNG or a camera raw "
                     "(CR2/CR3/NEF/ARW/RAF/RW2/ORF/PEF…). A file id from upload_file or an https URL.")
 

@@ -16,7 +16,7 @@ from skillnet_sdk import (FileConstraints, InputFile, OutputFile, ToolContext, T
 from . import _common as C
 from .grade import LookFile
 
-PhotoFile = Annotated[InputFile, FileConstraints(extensions=C.PHOTO_EXTS)]
+PhotoFile = Annotated[InputFile, FileConstraints(extensions=C.ACCEPT_EXTS)]
 Format = Literal["jpeg", "png", "tiff", "webp", "avif", "jxl", "original_xmp"]
 EXT = {"jpeg": ".jpg", "png": ".png", "tiff": ".tif", "webp": ".webp", "avif": ".avif", "jxl": ".jxl"}
 CSPACE = {"srgb": "srgb", "display_p3": "displayP3", "adobe_rgb": "adobeRgb"}
